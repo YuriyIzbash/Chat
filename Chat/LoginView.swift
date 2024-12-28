@@ -9,6 +9,7 @@ import SwiftUI
 import FirebaseAuth
 import PhotosUI
 import FirebaseStorage
+import FirebaseFirestore
 
 struct LoginView: View {
     
@@ -147,7 +148,24 @@ struct LoginView: View {
                 }
                 
                 self.loginStatusMessage = "Image uploaded successfully with URL: \(url?.absoluteString ?? "")"
+                print(url?.absoluteString)
+                
+                guard let url = url else { return }
+                self.storeUserInfo(imageProfileUrl: url)
             }
+        }
+    }
+    
+    private func storeUserInfo(imageProfileUrl: URL) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        let userData = ["uid": uid, "email": self.email, "profileImageUrl": imageProfileUrl.absoluteString]
+        Firestore.firestore().collection("users").document(uid).setData(userData) { error in
+            if let error {
+                print("Error storing user data: \(error.localizedDescription)")
+                self.loginStatusMessage = "\(error.localizedDescription)"
+                return
+            }
+            print("Successfully stored user data")
         }
     }
 }
