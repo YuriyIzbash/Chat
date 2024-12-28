@@ -7,12 +7,16 @@
 
 import SwiftUI
 import FirebaseAuth
+import PhotosUI
+import FirebaseStorage
 
 struct LoginView: View {
     
     @State var isLoginMode = false
     @State var email: String = ""
     @State var password: String = ""
+    @State private var avatarImage: UIImage?
+    @State private var photosPickerItems: PhotosPickerItem?
     
     var body: some View {
         NavigationStack {
@@ -28,13 +32,13 @@ struct LoginView: View {
                     .padding()
                     
                     if !isLoginMode {
-                        Button {
-                            
-                        } label: {
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 65))
+                        PhotosPicker(selection: $photosPickerItems, matching: .images) {
+                            Image(uiImage: avatarImage ?? UIImage(resource: .defaultAvatar))
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 140, height: 140)
+                                .clipShape(.circle)
                                 .padding()
-                            
                         }
                     }
                     Group {
@@ -70,6 +74,17 @@ struct LoginView: View {
                 .ignoresSafeArea())
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .onChange(of: photosPickerItems) { _, _ in
+            Task {
+                if let photosPickerItems,
+                   let data = try? await photosPickerItems.loadTransferable(type: Data.self) {
+                    if let image = UIImage(data: data) {
+                        avatarImage = image
+                    }
+                }
+                photosPickerItems = nil
+            }
+        }
     }
     
     private func handleAction() {
@@ -106,6 +121,33 @@ struct LoginView: View {
             
             print("Succeeded creating user: \(result?.user.uid ?? "" )")
             self.loginStatusMessage = "Succeeded creating user: \(result?.user.uid ?? "" )"
+            
+            self.persistImageToStorage()
+        }
+    }
+    
+    private func persistImageToStorage() {
+//        _ = UUID().uuidString
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        
+        let ref = Storage.storage().reference(withPath: uid)
+        guard let imageData = self.avatarImage?.jpegData(compressionQuality: 0.5) else { return }
+        ref.putData(imageData, metadata: nil) { metada, error in
+            if let error = error {
+                print("Failed to upload image: \(error.localizedDescription)")
+                self.loginStatusMessage = "Failed to upload image: \(error.localizedDescription)"
+                return
+            }
+            
+            ref.downloadURL { url, error in
+                if let error = error {
+                    print("Failed to download image: \(error.localizedDescription)")
+                    self.loginStatusMessage = "Failed to download image: \(error.localizedDescription)"
+                    return
+                }
+                
+                self.loginStatusMessage = "Image uploaded successfully with URL: \(url?.absoluteString ?? "")"
+            }
         }
     }
 }
