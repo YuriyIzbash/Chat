@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct LoginView: View {
     
@@ -58,20 +59,53 @@ struct LoginView: View {
                             .background(Color.blue)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    
+                    Text(self.loginStatusMessage)
+                        .foregroundStyle(.black)
                 }
                 .padding()
             }
             .navigationTitle(isLoginMode ? "Log in" : "Create Account")
             .background(Color(.init(white: 0, alpha: 0.05))
                 .ignoresSafeArea())
-            
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
+    
     private func handleAction() {
         if isLoginMode {
-            print("Log in...")
+            loginUser()
         } else {
-            print("Create account...")
+            createNewAccount()
+        }
+    }
+    
+    private func loginUser() {
+        Auth.auth().signIn(withEmail: email, password: password) { result, error in
+            if let error = error {
+                print("Failed to log in: \(error.localizedDescription)")
+                self.loginStatusMessage = "Failed to log in: \(error.localizedDescription)"
+                return
+            }
+            
+            print("Succeeded logging in: \(result?.user.uid ?? "" )")
+            self.loginStatusMessage = "Succeeded logging in: \(result?.user.uid ?? "" )"
+        }
+    }
+    
+    
+    @State var loginStatusMessage: String = ""
+    
+    private func createNewAccount() {
+        Auth.auth().createUser(withEmail: email, password: password) { result, error in
+            if let error = error {
+                print("Failed to create user: \(error.localizedDescription)")
+                self.loginStatusMessage = "Failed to create user: \(error.localizedDescription)"
+                return
+            }
+            
+            print("Succeeded creating user: \(result?.user.uid ?? "" )")
+            self.loginStatusMessage = "Succeeded creating user: \(result?.user.uid ?? "" )"
         }
     }
 }
