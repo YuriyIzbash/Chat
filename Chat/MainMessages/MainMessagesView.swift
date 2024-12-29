@@ -15,12 +15,16 @@ struct ChatUser {
 @Observable public final class MainMessagesViewModel {
     var errorMessage = ""
     var chatUser: ChatUser?
+    var isUserCurrentlyLoggedOut = false
     
     init () {
+        DispatchQueue.main.async {
+            self.isUserCurrentlyLoggedOut = FirebaseManager.shared.auth.currentUser?.uid == nil
+        }
         fetchCurrentUser()
     }
     
-    private func fetchCurrentUser () {
+    func fetchCurrentUser () {
         
         guard let uid = FirebaseManager.shared.auth.currentUser?.uid else {
             self.errorMessage = "\nCould not find firebase uid"
@@ -47,6 +51,15 @@ struct ChatUser {
 //            self.errorMessage = chatUser.profileImageUrl
         }
 }
+    func handleSignOut() {
+        do {
+            try FirebaseManager.shared.auth.signOut()
+            isUserCurrentlyLoggedOut = true
+            } catch let signOutError as NSError {
+                errorMessage = "Failed to sign out: \(signOutError.localizedDescription)"
+                print("Error signing out: \(signOutError.localizedDescription)")
+            }
+    }
 }
     
    
@@ -57,43 +70,50 @@ struct MainMessagesView: View {
     @Bindable var viewModel: MainMessagesViewModel
     
     var body: some View {
-        NavigationStack {
-            VStack {
-//                Text("Current User id: \(viewModel.errorMessage)")
-                CustomNavBar(shouldShowLogOutOptions: $shouldShowLogOutOptions, viewModel: viewModel)
-                
-                Divider()
-                
-                ScrollView {
-                    ForEach(0...10, id: \.self) { chat in
-                        CellChatView(viewModel: viewModel)
-                        
-                        Divider()
-                    }
-                }
-                .padding()
-            }
-            .overlay(
-                Button {
+        if viewModel.isUserCurrentlyLoggedOut {
+            LoginView(didCompleteLogin: {
+                self.viewModel.isUserCurrentlyLoggedOut = false
+                self.viewModel.fetchCurrentUser()
+            })
+        } else {
+            NavigationStack {
+                VStack {
+                    //                Text("Current User id: \(viewModel.errorMessage)")
+                    CustomNavBar(shouldShowLogOutOptions: $shouldShowLogOutOptions, viewModel: viewModel)
                     
-                } label: {
-                    HStack {
-                        Spacer()
-                        
-                        Text("+  New Message")
-                            .font(.headline)
-                        
-                        Spacer()
+                    Divider()
+                    
+                    ScrollView {
+                        ForEach(0...10, id: \.self) { chat in
+                            CellChatView(viewModel: viewModel)
+                            
+                            Divider()
+                        }
                     }
-                    .foregroundStyle(.white)
-                    .padding(.vertical)
-                    .background(Color.blue)
-                    .clipShape(Capsule())
-                    .padding(.horizontal)
-                    .shadow(radius: 12)
-                }, alignment: .bottom)
-            .toolbar(.hidden)
-//            .navigationTitle("Messages")
+                    .padding()
+                }
+                .overlay(
+                    Button {
+                        
+                    } label: {
+                        HStack {
+                            Spacer()
+                            
+                            Text("+  New Message")
+                                .font(.headline)
+                            
+                            Spacer()
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.vertical)
+                        .background(Color.blue)
+                        .clipShape(Capsule())
+                        .padding(.horizontal)
+                        .shadow(radius: 12)
+                    }, alignment: .bottom)
+                .toolbar(.hidden)
+                //            .navigationTitle("Messages")
+            }
         }
     }
 }
@@ -192,7 +212,7 @@ struct CustomNavBar: View {
                     titleVisibility: .visible
                 ) {
                     Button("Sign Out", role: .destructive) {
-                        print("Handle sign out")
+                        viewModel.handleSignOut()
                     }
                     Button("Cancel", role: .cancel) {
                         dismiss()

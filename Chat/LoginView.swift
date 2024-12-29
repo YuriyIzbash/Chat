@@ -10,11 +10,13 @@ import PhotosUI
 
 struct LoginView: View {
     
-    @State var isLoginMode = false
-    @State var email: String = ""
-    @State var password: String = ""
+    @State private var isLoginMode = false
+    @State private var email: String = ""
+    @State private var password: String = ""
     @State private var avatarImage: UIImage?
     @State private var photosPickerItems: PhotosPickerItem?
+    
+    let didCompleteLogin: () -> ()
     
     var body: some View {
         NavigationStack {
@@ -103,6 +105,7 @@ struct LoginView: View {
             
             print("Succeeded logging in: \(result?.user.uid ?? "" )")
             self.loginStatusMessage = "Succeeded logging in: \(result?.user.uid ?? "" )"
+            self.didCompleteLogin()
         }
     }
     
@@ -168,5 +171,5 @@ struct LoginView: View {
 }
 
 #Preview {
-    LoginView()
+    LoginView(didCompleteLogin: { })
 }
