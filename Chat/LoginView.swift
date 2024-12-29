@@ -113,6 +113,11 @@ struct LoginView: View {
     @State var loginStatusMessage: String = ""
     
     private func createNewAccount() {
+        if self.avatarImage == nil {
+            self.loginStatusMessage = "Please select an avatar to create a new account"
+            return
+        }
+        
         FirebaseManager.shared.auth.createUser(withEmail: email, password: password) { result, error in
             if let error = error {
                 print("Failed to create user: \(error.localizedDescription)")
@@ -166,6 +171,7 @@ struct LoginView: View {
                 return
             }
             print("Successfully stored user data")
+            self.didCompleteLogin()
         }
     }
 }

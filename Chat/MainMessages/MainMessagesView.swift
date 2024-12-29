@@ -8,10 +8,6 @@
 import SwiftUI
 import Observation
 
-struct ChatUser {
-    let uid, email, profileImageUrl: String
-}
-
 @Observable public final class MainMessagesViewModel {
     var errorMessage = ""
     var chatUser: ChatUser?
