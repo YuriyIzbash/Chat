@@ -97,7 +97,7 @@ struct LoginView: View {
     }
     
     private func loginUser() {
-        Auth.auth().signIn(withEmail: email, password: password) { result, error in
+        FirebaseManager.shared.auth.signIn(withEmail: email, password: password) { result, error in
             if let error = error {
                 print("Failed to log in: \(error.localizedDescription)")
                 self.loginStatusMessage = "Failed to log in: \(error.localizedDescription)"
@@ -113,7 +113,7 @@ struct LoginView: View {
     @State var loginStatusMessage: String = ""
     
     private func createNewAccount() {
-        Auth.auth().createUser(withEmail: email, password: password) { result, error in
+        FirebaseManager.shared.auth.createUser(withEmail: email, password: password) { result, error in
             if let error = error {
                 print("Failed to create user: \(error.localizedDescription)")
                 self.loginStatusMessage = "Failed to create user: \(error.localizedDescription)"
@@ -129,9 +129,9 @@ struct LoginView: View {
     
     private func persistImageToStorage() {
 //        _ = UUID().uuidString
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = FirebaseManager.shared.auth.currentUser?.uid else { return }
         
-        let ref = Storage.storage().reference(withPath: uid)
+        let ref = FirebaseManager.shared.storage.reference(withPath: uid)
         guard let imageData = self.avatarImage?.jpegData(compressionQuality: 0.5) else { return }
         ref.putData(imageData, metadata: nil) { metada, error in
             if let error = error {
@@ -157,9 +157,9 @@ struct LoginView: View {
     }
     
     private func storeUserInfo(imageProfileUrl: URL) {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = FirebaseManager.shared.auth.currentUser?.uid else { return }
         let userData = ["uid": uid, "email": self.email, "profileImageUrl": imageProfileUrl.absoluteString]
-        Firestore.firestore().collection("users").document(uid).setData(userData) { error in
+        FirebaseManager.shared.firestore.collection("users").document(uid).setData(userData) { error in
             if let error {
                 print("Error storing user data: \(error.localizedDescription)")
                 self.loginStatusMessage = "\(error.localizedDescription)"

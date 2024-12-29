@@ -6,6 +6,19 @@
 //
 
 import SwiftUI
+import Firebase
+import FirebaseAuth
+
+class MainMessagesViewModel: ObservableObject {
+    
+    init () {
+        fetchCurrentUser()
+    }
+    
+    private func fetchCurrentUser () {
+        guard let uid = FirebaseManager.shared.auth.currentUser?.uid else { return }
+    }
+}
 
 struct MainMessagesView: View {
     
