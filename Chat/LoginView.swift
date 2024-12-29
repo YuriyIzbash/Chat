@@ -148,7 +148,7 @@ struct LoginView: View {
                 }
                 
                 self.loginStatusMessage = "Image uploaded successfully with URL: \(url?.absoluteString ?? "")"
-                print(url?.absoluteString)
+                print(url!.absoluteString)
                 
                 guard let url = url else { return }
                 self.storeUserInfo(imageProfileUrl: url)
