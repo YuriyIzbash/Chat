@@ -6,10 +6,7 @@
 //
 
 import SwiftUI
-import FirebaseAuth
 import PhotosUI
-import FirebaseStorage
-import FirebaseFirestore
 
 struct LoginView: View {
     

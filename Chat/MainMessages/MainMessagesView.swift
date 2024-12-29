@@ -6,34 +6,67 @@
 //
 
 import SwiftUI
-import Firebase
-import FirebaseAuth
+import Observation
 
-class MainMessagesViewModel: ObservableObject {
+struct ChatUser {
+    let uid, email, profileImageUrl: String
+}
+
+@Observable public final class MainMessagesViewModel {
+    var errorMessage = ""
+    var chatUser: ChatUser?
     
     init () {
         fetchCurrentUser()
     }
     
     private func fetchCurrentUser () {
-        guard let uid = FirebaseManager.shared.auth.currentUser?.uid else { return }
-    }
+        
+        guard let uid = FirebaseManager.shared.auth.currentUser?.uid else {
+            self.errorMessage = "\nCould not find firebase uid"
+            return }
+        
+        FirebaseManager.shared.firestore.collection("users").document(uid).getDocument { snapshot, error in
+            if let error = error {
+                self.errorMessage = "Failed to fetch current user: \(error.localizedDescription)"
+                print("Failed to fetch current user: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let data = snapshot?.data() else {
+                self.errorMessage = "No data found"
+                return }
+
+//            self.errorMessage = "Data: \(data)"
+            let uid = data["uid"] as? String ?? ""
+            let email = data["email"] as? String ?? ""
+            let profileImageUrl = data["profileImageUrl"] as? String ?? ""
+            
+            self.chatUser = ChatUser(uid: uid, email: email, profileImageUrl: profileImageUrl)
+            
+//            self.errorMessage = chatUser.profileImageUrl
+        }
 }
+}
+    
+   
 
 struct MainMessagesView: View {
     
     @State var shouldShowLogOutOptions: Bool = false
+    @Bindable var viewModel: MainMessagesViewModel
     
     var body: some View {
         NavigationStack {
             VStack {
-                CustomNavBar(shouldShowLogOutOptions: $shouldShowLogOutOptions)
+//                Text("Current User id: \(viewModel.errorMessage)")
+                CustomNavBar(shouldShowLogOutOptions: $shouldShowLogOutOptions, viewModel: viewModel)
                 
                 Divider()
                 
                 ScrollView {
                     ForEach(0...10, id: \.self) { chat in
-                        CellChatView()
+                        CellChatView(viewModel: viewModel)
                         
                         Divider()
                     }
@@ -66,6 +99,9 @@ struct MainMessagesView: View {
 }
 
 struct CellChatView: View {
+    
+    @Bindable var viewModel: MainMessagesViewModel
+    
     var body: some View {
         HStack(spacing: 20) {
             Image("defaultAvatar")
@@ -98,18 +134,33 @@ struct CustomNavBar: View {
     
     @Environment(\.dismiss) var dismiss
     @Binding var shouldShowLogOutOptions: Bool
+    @Bindable var viewModel: MainMessagesViewModel
     
     var body: some View {
         HStack(spacing: 20) {
-            Image("defaultAvatar")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 50, height: 50)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color.black, lineWidth: 1))
+            if let profileImageUrl = viewModel.chatUser?.profileImageUrl, let url = URL(string: profileImageUrl) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 50, height: 50)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.black, lineWidth: 1))
+                } placeholder: {
+                    ProgressView()
+                        .frame(width: 50, height: 50)
+                }
+            } else {
+                Image("defaultAvatar")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.black, lineWidth: 1))
+            }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("UserName")
+                Text("\(viewModel.chatUser?.email ?? "")")
                     .font(.title2)
                     .fontWeight(.bold)
                 
@@ -153,5 +204,5 @@ struct CustomNavBar: View {
 }
 
 #Preview {
-    MainMessagesView()
+    MainMessagesView(viewModel: MainMessagesViewModel())
 }
