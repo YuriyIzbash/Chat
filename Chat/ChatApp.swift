@@ -9,10 +9,13 @@ import SwiftUI
 
 @main
 struct ChatApp: App {
-    @State var viewModel = MainMessagesViewModel()
+    
+    @State private var viewModel = MainMessagesViewModel()
+    
     var body: some Scene {
         WindowGroup {
-            MainMessagesView(viewModel: viewModel)
+            MainMessagesView(viewModel: MainMessagesViewModel())
+                .environment(viewModel)
         }
     }
 }

@@ -38,11 +38,8 @@ import Observation
                 return }
 
 //            self.errorMessage = "Data: \(data)"
-            let uid = data["uid"] as? String ?? ""
-            let email = data["email"] as? String ?? ""
-            let profileImageUrl = data["profileImageUrl"] as? String ?? ""
             
-            self.chatUser = ChatUser(uid: uid, email: email, profileImageUrl: profileImageUrl)
+            self.chatUser = .init(data: data)
             
 //            self.errorMessage = chatUser.profileImageUrl
         }
@@ -89,27 +86,40 @@ struct MainMessagesView: View {
                     .padding()
                 }
                 .overlay(
-                    Button {
-                        
-                    } label: {
-                        HStack {
-                            Spacer()
-                            
-                            Text("+  New Message")
-                                .font(.headline)
-                            
-                            Spacer()
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.vertical)
-                        .background(Color.blue)
-                        .clipShape(Capsule())
-                        .padding(.horizontal)
-                        .shadow(radius: 12)
-                    }, alignment: .bottom)
+                    NewMessageButton()
+                    , alignment: .bottom)
                 .toolbar(.hidden)
                 //            .navigationTitle("Messages")
             }
+        }
+    }
+}
+
+struct NewMessageButton: View {
+    
+    @State var showNewMessageScreen: Bool = false
+    
+    var body: some View {
+        Button {
+            showNewMessageScreen.toggle()
+        } label: {
+            HStack {
+                Spacer()
+                
+                Text("+  New Message")
+                    .font(.headline)
+                
+                Spacer()
+            }
+            .foregroundStyle(.white)
+            .padding(.vertical)
+            .background(Color.blue)
+            .clipShape(Capsule())
+            .padding(.horizontal)
+            .shadow(radius: 12)
+        }
+        .fullScreenCover(isPresented: $showNewMessageScreen) {
+            NewMessageView()
         }
     }
 }
@@ -154,26 +164,7 @@ struct CustomNavBar: View {
     
     var body: some View {
         HStack(spacing: 20) {
-            if let profileImageUrl = viewModel.chatUser?.profileImageUrl, let url = URL(string: profileImageUrl) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 50, height: 50)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(Color.black, lineWidth: 1))
-                } placeholder: {
-                    ProgressView()
-                        .frame(width: 50, height: 50)
-                }
-            } else {
-                Image("defaultAvatar")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 50, height: 50)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.black, lineWidth: 1))
-            }
+            ChatUserImageView(imageUrl: viewModel.chatUser?.profileImageUrl)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(viewModel.chatUser?.email ?? "")")
