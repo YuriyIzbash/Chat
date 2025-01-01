@@ -43,13 +43,19 @@ struct NewMessageView: View {
         NavigationView {
             ScrollView {
                 ForEach(viewModel.users, id: \.self) { user in
-                    HStack(spacing: 20) {
-                       
-                        ChatUserImageView(imageUrl: user.profileImageUrl)
-                        Text(user.email)
-                        Spacer()
+                    
+                    Button {
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 20) {
+                           
+                            ChatUserImageView(imageUrl: user.profileImageUrl)
+                            Text(user.email)
+                                .foregroundStyle(Color(.label))
+                            Spacer()
+                        }
+                        .padding()
                     }
-                    .padding()
                     Divider()
                 }
             }
