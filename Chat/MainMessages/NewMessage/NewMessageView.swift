@@ -36,6 +36,7 @@ class NawMessageViewModel {
 
 struct NewMessageView: View {
     
+    let didSelectNewUser: (ChatUser)->()
     @Environment(\.dismiss) var dismiss
     @Bindable var viewModel = NawMessageViewModel()
     
@@ -46,6 +47,7 @@ struct NewMessageView: View {
                     
                     Button {
                         dismiss()
+                        didSelectNewUser(user)
                     } label: {
                         HStack(spacing: 20) {
                            
@@ -74,5 +76,5 @@ struct NewMessageView: View {
 }
 
 #Preview {
-    NewMessageView()
+//    NewMessageView()
 }

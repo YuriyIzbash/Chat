@@ -60,6 +60,7 @@ import Observation
 struct MainMessagesView: View {
     
     @State var shouldShowLogOutOptions: Bool = false
+    @State var shouldNavigateToChatLogView: Bool = false
     @Bindable var viewModel: MainMessagesViewModel
     
     var body: some View {
@@ -74,11 +75,19 @@ struct MainMessagesView: View {
                     //                Text("Current User id: \(viewModel.errorMessage)")
                     CustomNavBar(shouldShowLogOutOptions: $shouldShowLogOutOptions, viewModel: viewModel)
                     
+                    NavigationLink("", isActive: $shouldNavigateToChatLogView) {
+                        ChatLogView(chatUser: self.viewModel.chatUser)
+                    }
+                    
                     Divider()
                     
                     ScrollView {
                         ForEach(0...10, id: \.self) { chat in
-                            CellChatView(viewModel: viewModel)
+                            NavigationLink {
+                                Text("Destination")
+                            } label: {
+                                CellChatView(viewModel: viewModel)
+                            }
                             
                             Divider()
                         }
@@ -86,7 +95,7 @@ struct MainMessagesView: View {
                     .padding()
                 }
                 .overlay(
-                    NewMessageButton()
+                    NewMessageButton(shouldNavigateToChatLogView: $shouldNavigateToChatLogView)
                     , alignment: .bottom)
                 .toolbar(.hidden)
                 //            .navigationTitle("Messages")
@@ -98,6 +107,8 @@ struct MainMessagesView: View {
 struct NewMessageButton: View {
     
     @State var showNewMessageScreen: Bool = false
+    @Binding var shouldNavigateToChatLogView: Bool
+    @State var chatUser: ChatUser?
     
     var body: some View {
         Button {
@@ -119,7 +130,11 @@ struct NewMessageButton: View {
             .shadow(radius: 12)
         }
         .fullScreenCover(isPresented: $showNewMessageScreen) {
-            NewMessageView()
+            NewMessageView(didSelectNewUser: { user in
+                print(user.email)
+                self.shouldNavigateToChatLogView.toggle()
+                self.chatUser = user
+            })
         }
     }
 }
@@ -207,6 +222,22 @@ struct CustomNavBar: View {
                 } message: {
                     Text("What do you want to do?")
                 }
+    }
+}
+
+struct ChatLogView: View {
+    
+    let chatUser: ChatUser?
+    
+    var body: some View {
+        ScrollView {
+            ForEach(0..<10, id: \.self) { num in
+                Text("Very interesting message \(num)")
+                    .padding()
+            }
+        }
+        .navigationTitle(chatUser?.email ?? "")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
