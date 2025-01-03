@@ -6,18 +6,67 @@
 //
 
 import SwiftUI
+import Firebase
+
+@Observable public final class ChatLogViewModel {
+    
+    var chatText: String = ""
+    var errorMessage: String = ""
+    let chatUser: ChatUser?
+    
+    init(chatUser: ChatUser?) {
+        self.chatUser = chatUser
+    }
+    
+    func handleSend() {
+        guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
+        
+        guard let toId = chatUser?.uid else { return }
+        
+        let document = FirebaseManager.shared.firestore.collection("messages").document(fromId).collection(toId).document()
+        
+        let messageData = ["fromId": fromId, "toId": toId, "text": self.chatText, "timestamp": Timestamp()] as [String: Any]
+        
+        document.setData(messageData) { error in
+            if let error {
+                self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
+                return
+            }
+            print("Successfully saved current message")
+            self.chatText = ""
+        }
+        
+        let recipientMessageDociment = FirebaseManager.shared.firestore.collection("messages").document(toId).collection(fromId).document()
+        
+        recipientMessageDociment.setData(messageData) { error in
+            if let error {
+                self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
+                return
+            }
+            print("Successfully saved recipient message")
+        }
+    }
+}
 
 struct ChatLogView: View {
     
     let chatUser: ChatUser?
-    @State var chatText: String = ""
+    
+    init(chatUser: ChatUser?) {
+        self.chatUser = chatUser
+        self.viewModel = .init(chatUser: chatUser)
+    }
+    
+    @State private var viewModel: ChatLogViewModel
     
     var body: some View {
         VStack {
             messagesView
             
             chatBottomBar
+                
         }
+        .environment(viewModel)
         .navigationTitle(chatUser?.email ?? "")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -52,13 +101,13 @@ struct ChatLogView: View {
             //                TextField("Description", text: $chatText)
             //                    .font(.title3)
             ZStack(alignment: .topLeading) {
-                TextEditor(text: $chatText)
+                TextEditor(text: $viewModel.chatText)
                     .frame(height: 40)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                Text("Type here").fontWeight(.light).foregroundColor(.black.opacity(0.25)).padding(8).hidden(!chatText.isEmpty)
+                Text("Type here").fontWeight(.light).foregroundColor(.black.opacity(0.25)).padding(8).hidden(!viewModel.chatText.isEmpty)
             }
             Button {
-                
+                viewModel.handleSend()
             } label: {
                 Text("Send")
                     .font(.headline)
@@ -75,7 +124,7 @@ struct ChatLogView: View {
 
 #Preview {
     NavigationView {
-        ChatLogView(chatUser: .init(data: ["uid": "LGbh4z5iMsSwFoG3LjSsxSrDSA62","email": "test7@test.com"]))
+        ChatLogView(chatUser: .init(data: ["email": "test@test.com", "uid": "test"]))
     }
 }
 
