@@ -225,22 +225,6 @@ struct CustomNavBar: View {
     }
 }
 
-struct ChatLogView: View {
-    
-    let chatUser: ChatUser?
-    
-    var body: some View {
-        ScrollView {
-            ForEach(0..<10, id: \.self) { num in
-                Text("Very interesting message \(num)")
-                    .padding()
-            }
-        }
-        .navigationTitle(chatUser?.email ?? "")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 #Preview {
     MainMessagesView(viewModel: MainMessagesViewModel())
 }
