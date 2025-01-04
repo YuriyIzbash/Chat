@@ -77,20 +77,22 @@ struct ChatMessage: Identifiable {
                     "timestamp": Timestamp()
                 ] as [String: Any]
 
-        // Write the message for the sender
-        let senderDocument = FirebaseManager.shared.firestore
-            .collection("messages")
-            .document(fromId)
-            .collection(toId)
-            .document()
+        // Write the message for the sender, in case it's not empty
+        if !chatText.isEmpty {
+            let senderDocument = FirebaseManager.shared.firestore
+                .collection("messages")
+                .document(fromId)
+                .collection(toId)
+                .document()
 
-        senderDocument.setData(messageData) { error in
-            if let error = error {
-                self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
-                return
+            senderDocument.setData(messageData) { error in
+                if let error = error {
+                    self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
+                    return
+                }
+    //            print("Successfully saved message for sender")
+                self.chatText = ""
             }
-//            print("Successfully saved message for sender")
-            self.chatText = ""
         }
 
         // If the sender and recipient are the same, avoid duplicate writes
