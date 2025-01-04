@@ -68,44 +68,46 @@ struct ChatMessage: Identifiable {
     
     func handleSend() {
         guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
-        
         guard let toId = chatUser?.uid else { return }
-        
-        let document =
-        FirebaseManager.shared.firestore
+
+        let messageData = [
+                    FirebaseConstants.fromId: fromId,
+                    FirebaseConstants.toId: toId,
+                    FirebaseConstants.text: self.chatText,
+                    "timestamp": Timestamp()
+                ] as [String: Any]
+
+        // Write the message for the sender
+        let senderDocument = FirebaseManager.shared.firestore
             .collection("messages")
             .document(fromId)
             .collection(toId)
             .document()
-        
-        let messageData = [
-            FirebaseConstants.fromId: fromId,
-            FirebaseConstants.toId: toId,
-            FirebaseConstants.text: self.chatText,
-            "timestamp": Timestamp()
-        ] as [String: Any]
-        
-        document.setData(messageData) { error in
+
+        senderDocument.setData(messageData) { error in
             if let error = error {
                 self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
                 return
             }
-            print("Successfully saved current message")
+//            print("Successfully saved message for sender")
             self.chatText = ""
         }
-        
-        let recipientMessageDocument = FirebaseManager.shared.firestore
-            .collection("messages")
-            .document(toId)
-            .collection(fromId)
-            .document()
-        
-        recipientMessageDocument.setData(messageData) { error in
-            if let error = error {
-                self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
-                return
+
+        // If the sender and recipient are the same, avoid duplicate writes
+        if fromId != toId {
+            let recipientDocument = FirebaseManager.shared.firestore
+                .collection("messages")
+                .document(toId)
+                .collection(fromId)
+                .document()
+
+            recipientDocument.setData(messageData) { error in
+                if let error = error {
+                    self.errorMessage = "Failed to save message for recipient, error: \(error.localizedDescription)"
+                    return
+                }
+//                print("Successfully saved message for recipient")
             }
-            print("Successfully saved recipient message")
         }
     }
 }
