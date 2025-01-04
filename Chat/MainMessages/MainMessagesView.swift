@@ -26,7 +26,10 @@ import Observation
             self.errorMessage = "\nCould not find firebase uid"
             return }
         
-        FirebaseManager.shared.firestore.collection("users").document(uid).getDocument { snapshot, error in
+        FirebaseManager.shared.firestore
+            .collection("users")
+            .document(uid)
+            .getDocument { snapshot, error in
             if let error = error {
                 self.errorMessage = "Failed to fetch current user: \(error.localizedDescription)"
                 print("Failed to fetch current user: \(error.localizedDescription)")
@@ -58,10 +61,10 @@ import Observation
    
 
 struct MainMessagesView: View {
-    
     @State var shouldShowLogOutOptions: Bool = false
     @State var shouldNavigateToChatLogView: Bool = false
-    @Bindable var viewModel: MainMessagesViewModel
+    @State var selectedChatUser: ChatUser? = nil
+    @Environment(MainMessagesViewModel.self) private var viewModel
     
     var body: some View {
         if viewModel.isUserCurrentlyLoggedOut {
@@ -72,12 +75,7 @@ struct MainMessagesView: View {
         } else {
             NavigationStack {
                 VStack {
-                    //                Text("Current User id: \(viewModel.errorMessage)")
                     CustomNavBar(shouldShowLogOutOptions: $shouldShowLogOutOptions, viewModel: viewModel)
-                    
-                    NavigationLink("", isActive: $shouldNavigateToChatLogView) {
-                        ChatLogView(chatUser: self.viewModel.chatUser)
-                    }
                     
                     Divider()
                     
@@ -95,21 +93,30 @@ struct MainMessagesView: View {
                     .padding()
                 }
                 .overlay(
-                    NewMessageButton(shouldNavigateToChatLogView: $shouldNavigateToChatLogView)
-                    , alignment: .bottom)
+                    NewMessageButton(
+                        shouldNavigateToChatLogView: $shouldNavigateToChatLogView,
+                        selectedChatUser: $selectedChatUser
+                    ),
+                    alignment: .bottom
+                )
                 .toolbar(.hidden)
-                //            .navigationTitle("Messages")
+                .navigationDestination(isPresented: $shouldNavigateToChatLogView) {
+                    if let chatUser = selectedChatUser {
+                        ChatLogView(chatUser: chatUser)
+                    } else {
+                        Text("No chat user selected")
+                    }
+                }
             }
         }
     }
 }
 
 struct NewMessageButton: View {
-    
     @State var showNewMessageScreen: Bool = false
     @Binding var shouldNavigateToChatLogView: Bool
-    @State var chatUser: ChatUser?
-    
+    @Binding var selectedChatUser: ChatUser?
+
     var body: some View {
         Button {
             showNewMessageScreen.toggle()
@@ -131,10 +138,10 @@ struct NewMessageButton: View {
         }
         .fullScreenCover(isPresented: $showNewMessageScreen) {
             NewMessageView(didSelectNewUser: { user in
-                print(user.email)
-                self.shouldNavigateToChatLogView.toggle()
-                self.chatUser = user
-            })
+//                print(user.email)
+                self.selectedChatUser = user
+                self.shouldNavigateToChatLogView = true
+            }, viewModel: NawMessageViewModel())
         }
     }
 }
@@ -173,7 +180,7 @@ struct CellChatView: View {
 
 struct CustomNavBar: View {
     
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
     @Binding var shouldShowLogOutOptions: Bool
     @Bindable var viewModel: MainMessagesViewModel
     
@@ -226,5 +233,6 @@ struct CustomNavBar: View {
 }
 
 #Preview {
-    MainMessagesView(viewModel: MainMessagesViewModel())
+    MainMessagesView()
+        .environment(MainMessagesViewModel())
 }

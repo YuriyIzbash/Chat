@@ -14,12 +14,14 @@ class NawMessageViewModel {
     var users = [ChatUser]()
     var errorMessage = ""
     
-    init( ) {
+    init() {
         fetchAllUsers()
     }
     
     func fetchAllUsers() {
-        FirebaseManager.shared.firestore.collection("users").getDocuments { documentsSnapshot, error in
+        FirebaseManager.shared.firestore
+            .collection("users")
+            .getDocuments { documentsSnapshot, error in
             if let error {
                 self.errorMessage = "Error fetching users: \(error.localizedDescription)"
                 print("Error fetching users: \(error.localizedDescription)")
@@ -36,14 +38,14 @@ class NawMessageViewModel {
 
 struct NewMessageView: View {
     
-    let didSelectNewUser: (ChatUser)->()
-    @Environment(\.dismiss) var dismiss
-    @Bindable var viewModel = NawMessageViewModel()
+    let didSelectNewUser: (ChatUser) -> ()
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var viewModel: NawMessageViewModel
     
     var body: some View {
         NavigationView {
             ScrollView {
-                ForEach(viewModel.users, id: \.self) { user in
+                ForEach(viewModel.users) { user in
                     
                     Button {
                         dismiss()
@@ -76,5 +78,7 @@ struct NewMessageView: View {
 }
 
 #Preview {
-//    NewMessageView()
+//   NewMessageView()
+    MainMessagesView()
+        .environment(MainMessagesViewModel())
 }

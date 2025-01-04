@@ -7,15 +7,63 @@
 
 import SwiftUI
 import Firebase
+import FirebaseFirestore
+
+struct FirebaseConstants {
+    static let fromId = "fromId"
+    static let toId = "toId"
+    static let text = "text"
+}
+
+struct ChatMessage: Identifiable {
+    var id: String { documentId }
+    let fromId, toId, text: String
+    let documentId: String
+    
+    init(documentId: String, data: [String: Any]) {
+        self.documentId = documentId
+        self.fromId = data[FirebaseConstants.fromId] as? String ?? ""
+        self.toId = data[FirebaseConstants.toId] as? String ?? ""
+        self.text = data[FirebaseConstants.text] as? String ?? ""
+    }
+}
 
 @Observable public final class ChatLogViewModel {
     
     var chatText: String = ""
     var errorMessage: String = ""
+    var chatMessages = [ChatMessage]()
     let chatUser: ChatUser?
     
     init(chatUser: ChatUser?) {
         self.chatUser = chatUser
+        
+        fetchMessages()
+    }
+    
+    private func fetchMessages() {
+        guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
+        
+        guard let toId = chatUser?.uid else { return }
+        FirebaseManager.shared.firestore
+            .collection("messages")
+            .document(fromId)
+            .collection(toId)
+            .order(by: "timestamp")
+            .addSnapshotListener { querySnapshot, error in
+                if let error = error {
+                    self.errorMessage = "Failed to fetch messages: \(error.localizedDescription)"
+                    print("Failed to fetch messages: \(error.localizedDescription)")
+                    return
+                }
+                
+                querySnapshot?.documentChanges.forEach({ change in
+                    if change.type == .added {
+                        let data = change.document.data()
+                        self.chatMessages.append(.init(documentId: change.document.documentID, data: data))
+                    }
+                })
+            }
     }
     
     func handleSend() {
@@ -23,12 +71,22 @@ import Firebase
         
         guard let toId = chatUser?.uid else { return }
         
-        let document = FirebaseManager.shared.firestore.collection("messages").document(fromId).collection(toId).document()
+        let document =
+        FirebaseManager.shared.firestore
+            .collection("messages")
+            .document(fromId)
+            .collection(toId)
+            .document()
         
-        let messageData = ["fromId": fromId, "toId": toId, "text": self.chatText, "timestamp": Timestamp()] as [String: Any]
+        let messageData = [
+            FirebaseConstants.fromId: fromId,
+            FirebaseConstants.toId: toId,
+            FirebaseConstants.text: self.chatText,
+            "timestamp": Timestamp()
+        ] as [String: Any]
         
         document.setData(messageData) { error in
-            if let error {
+            if let error = error {
                 self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
                 return
             }
@@ -36,10 +94,14 @@ import Firebase
             self.chatText = ""
         }
         
-        let recipientMessageDociment = FirebaseManager.shared.firestore.collection("messages").document(toId).collection(fromId).document()
+        let recipientMessageDocument = FirebaseManager.shared.firestore
+            .collection("messages")
+            .document(toId)
+            .collection(fromId)
+            .document()
         
-        recipientMessageDociment.setData(messageData) { error in
-            if let error {
+        recipientMessageDocument.setData(messageData) { error in
+            if let error = error {
                 self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
                 return
             }
@@ -57,39 +119,54 @@ struct ChatLogView: View {
         self.viewModel = .init(chatUser: chatUser)
     }
     
-    @State private var viewModel: ChatLogViewModel
+    @Bindable var viewModel: ChatLogViewModel
     
     var body: some View {
         VStack {
             messagesView
+            Text(viewModel.errorMessage)
             
             chatBottomBar
-                
+            
         }
-        .environment(viewModel)
         .navigationTitle(chatUser?.email ?? "")
         .navigationBarTitleDisplayMode(.inline)
     }
     
     private var messagesView: some View {
         ScrollView {
-            ForEach(0..<10, id: \.self) { num in
-                HStack {
-                    Spacer()
-                    HStack {
-                        Text("Very interesting message \(num)")
-                            .foregroundStyle(Color.white)
+            ForEach(viewModel.chatMessages) { message in
+                VStack {
+                    if message.fromId == FirebaseManager.shared.auth.currentUser?.uid {
+                        HStack {
+                            Spacer()
+                            HStack {
+                                Text(message.text)
+                                    .foregroundStyle(Color.white)
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                        }
+                    } else {
+                        HStack {
+                            HStack {
+                                Text(message.text)
+                                    .foregroundStyle(Color.black)
+                            }
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            Spacer()
+                        }
                     }
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(12)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
             }
             HStack { Spacer() }
         }
-        .background(Color(.init(white: 0.95, alpha: 1)))
+        .background(Color(.init(white: 0.8, alpha: 1)))
     }
     
     private var chatBottomBar: some View {
@@ -98,8 +175,6 @@ struct ChatLogView: View {
                 .resizable()
                 .scaledToFill()
                 .frame(width: 30, height: 30)
-            //                TextField("Description", text: $chatText)
-            //                    .font(.title3)
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $viewModel.chatText)
                     .frame(height: 40)
@@ -124,7 +199,7 @@ struct ChatLogView: View {
 
 #Preview {
     NavigationView {
-        ChatLogView(chatUser: .init(data: ["email": "test@test.com", "uid": "test"]))
+        ChatLogView(chatUser: .init(data: ["uid": "LGbh4z5iMsSwFoG3LjSsxSrDSA62","email": "test7@test.com"]))
     }
 }
 
