@@ -33,6 +33,7 @@ struct ChatMessage: Identifiable {
     var chatText: String = ""
     var errorMessage: String = ""
     var chatMessages = [ChatMessage]()
+    var count = 0
     let chatUser: ChatUser?
     
     init(chatUser: ChatUser?) {
@@ -69,14 +70,14 @@ struct ChatMessage: Identifiable {
     func handleSend() {
         guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
         guard let toId = chatUser?.uid else { return }
-
+        
         let messageData = [
-                    FirebaseConstants.fromId: fromId,
-                    FirebaseConstants.toId: toId,
-                    FirebaseConstants.text: self.chatText,
-                    "timestamp": Timestamp()
-                ] as [String: Any]
-
+            FirebaseConstants.fromId: fromId,
+            FirebaseConstants.toId: toId,
+            FirebaseConstants.text: self.chatText,
+            "timestamp": Timestamp()
+        ] as [String: Any]
+        
         // Write the message for the sender, in case it's not empty
         if !chatText.isEmpty {
             let senderDocument = FirebaseManager.shared.firestore
@@ -84,17 +85,18 @@ struct ChatMessage: Identifiable {
                 .document(fromId)
                 .collection(toId)
                 .document()
-
+            
             senderDocument.setData(messageData) { error in
                 if let error = error {
                     self.errorMessage = "Failed to send message, error: \(error.localizedDescription)"
                     return
                 }
-    //            print("Successfully saved message for sender")
+                //            print("Successfully saved message for sender")
                 self.chatText = ""
+                self.count += 1
             }
         }
-
+        
         // If the sender and recipient are the same, avoid duplicate writes
         if fromId != toId {
             let recipientDocument = FirebaseManager.shared.firestore
@@ -102,13 +104,13 @@ struct ChatMessage: Identifiable {
                 .document(toId)
                 .collection(fromId)
                 .document()
-
+            
             recipientDocument.setData(messageData) { error in
                 if let error = error {
                     self.errorMessage = "Failed to save message for recipient, error: \(error.localizedDescription)"
                     return
                 }
-//                print("Successfully saved message for recipient")
+                //                print("Successfully saved message for recipient")
             }
         }
     }
@@ -138,39 +140,30 @@ struct ChatLogView: View {
     }
     
     private var messagesView: some View {
-        ScrollView {
-            ForEach(viewModel.chatMessages) { message in
-                VStack {
-                    if message.fromId == FirebaseManager.shared.auth.currentUser?.uid {
-                        HStack {
-                            Spacer()
-                            HStack {
-                                Text(message.text)
-                                    .foregroundStyle(Color.white)
-                            }
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                        }
-                    } else {
-                        HStack {
-                            HStack {
-                                Text(message.text)
-                                    .foregroundStyle(Color.black)
-                            }
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(12)
-                            Spacer()
-                        }
-                    }
+        ScrollViewReader { proxy in
+            ScrollView {
+                ForEach(viewModel.chatMessages) { message in
+                    MessageView(message: message)
+                        .id(message.id)
                 }
-                .padding(.horizontal)
-                .padding(.top, 8)
+                HStack { Spacer() }
+                    .padding(.vertical, 8)
+                    .id("BottomAnchor")
             }
-            HStack { Spacer() }
+            .background(Color(.init(white: 0.8, alpha: 1)))
+            .onAppear {
+                // Scroll to the bottom when the view appears
+                if let lastMessageID = viewModel.chatMessages.last?.id {
+                    proxy.scrollTo(lastMessageID, anchor: .bottom)
+                }
+            }
+            .onChange(of: viewModel.chatMessages.count) {
+                // Scroll to the latest message when the count changes
+                withAnimation {
+                    proxy.scrollTo("BottomAnchor", anchor: .bottom)
+                }
+            }
         }
-        .background(Color(.init(white: 0.8, alpha: 1)))
     }
     
     private var chatBottomBar: some View {
@@ -198,6 +191,41 @@ struct ChatLogView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
+    }
+}
+
+struct MessageView: View {
+    
+    let message: ChatMessage
+    
+    var body: some View {
+        VStack {
+            if message.fromId == FirebaseManager.shared.auth.currentUser?.uid {
+                HStack {
+                    Spacer()
+                    HStack {
+                        Text(message.text)
+                            .foregroundStyle(Color.white)
+                    }
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                }
+            } else {
+                HStack {
+                    HStack {
+                        Text(message.text)
+                            .foregroundStyle(Color.black)
+                    }
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(12)
+                    Spacer()
+                }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
     }
 }
 
