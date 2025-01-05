@@ -7,6 +7,7 @@
 
 import Foundation
 import Firebase
+import FirebaseFirestore
 
 @Observable public final class ChatLogViewModel {
     
@@ -40,8 +41,12 @@ import Firebase
                 
                 querySnapshot?.documentChanges.forEach({ change in
                     if change.type == .added {
-                        let data = change.document.data()
-                        self.chatMessages.append(.init(documentId: change.document.documentID, data: data))
+                        do {
+                            let chatMessage = try change.document.data(as: ChatMessage.self)
+                            self.chatMessages.append(chatMessage)
+                        } catch {
+                            print("Error decoding ChatMessage: \(error.localizedDescription)")
+                        }
                     }
                 })
             }
@@ -55,7 +60,7 @@ import Firebase
             FirebaseConstants.fromId: fromId,
             FirebaseConstants.toId: toId,
             FirebaseConstants.text: self.chatText,
-            FirebaseConstants.timestamp: Timestamp()
+            FirebaseConstants.timestamp: Date()
         ] as [String: Any]
         
         // Write the message for the sender, in case it's not empty
@@ -115,7 +120,7 @@ import Firebase
             FirebaseConstants.fromId: fromId,
             FirebaseConstants.toId: toId,
             FirebaseConstants.profileImageUrl: chatUser.profileImageUrl,
-            FirebaseConstants.timestamp: Timestamp(),
+            FirebaseConstants.timestamp: Date(),
             FirebaseConstants.email: chatUser.email,
         ] as [String : Any]
         
