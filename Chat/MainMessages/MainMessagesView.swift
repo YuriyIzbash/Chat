@@ -31,7 +31,7 @@ struct MainMessagesView: View {
                             NavigationLink {
                                 Text("Destination")
                             } label: {
-                                CellChatView(email: recentMessage.email, profileImageUrl: recentMessage.profileImageUrl, text: recentMessage.text, timeAgo: recentMessage.timeAgo)
+                                CellChatView(username: recentMessage.username, profileImageUrl: recentMessage.profileImageUrl, text: recentMessage.text, timeAgo: recentMessage.timeAgo)
                             }
                             
                             Divider()

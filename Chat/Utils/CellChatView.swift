@@ -11,7 +11,7 @@ import Firebase
 
 struct CellChatView: View {
     
-    let email, profileImageUrl, text: String
+    let username, profileImageUrl, text: String
     let timeAgo: String
 
     @Environment(MainMessagesViewModel.self) var viewModel
@@ -21,7 +21,7 @@ struct CellChatView: View {
             ChatUserImageView(imageUrl: profileImageUrl, size: 70)
             
             VStack(alignment: .leading) {
-                Text(email)
+                Text(username)
                     .font(.headline)
                     .foregroundStyle(Color(.label))
                     .lineLimit(1)

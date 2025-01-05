@@ -26,7 +26,7 @@ struct ChatLogView: View {
             
             chatBottomBar
         }
-        .navigationTitle(chatUser?.email ?? "")
+        .navigationTitle(chatUser?.username ?? "")
         .navigationBarTitleDisplayMode(.inline)
     }
     

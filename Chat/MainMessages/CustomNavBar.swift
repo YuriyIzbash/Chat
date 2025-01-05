@@ -18,7 +18,7 @@ struct CustomNavBar: View {
             ChatUserImageView(imageUrl: viewModel.chatUser?.profileImageUrl, size: 50)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(viewModel.chatUser?.email ?? "")")
+                Text("\(viewModel.chatUser?.username ?? "")")
                     .font(.title2)
                     .fontWeight(.bold)
                 
