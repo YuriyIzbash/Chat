@@ -7,17 +7,66 @@
 
 import SwiftUI
 import Observation
+import Firebase
+
+struct RecentMessage: Identifiable {
+    var id: String { documentId }
+    let fromId, toId, text, profileImageUrl, email: String
+    let timestamp: Timestamp
+    let documentId: String
+    
+    init(documentId: String, data: [String: Any]) {
+        self.documentId = documentId
+        self.fromId = data[FirebaseConstants.fromId] as? String ?? ""
+        self.toId = data[FirebaseConstants.toId] as? String ?? ""
+        self.text = data[FirebaseConstants.text] as? String ?? ""
+        self.profileImageUrl = data[FirebaseConstants.profileImageUrl] as? String ?? ""
+        self.timestamp = data[FirebaseConstants.timestamp] as? Timestamp ?? Timestamp(date: Date())
+        self.email = data[FirebaseConstants.email] as? String ?? ""
+    }
+}
+
 
 @Observable public final class MainMessagesViewModel {
     var errorMessage = ""
     var chatUser: ChatUser?
     var isUserCurrentlyLoggedOut = false
+    var recentMessages = [RecentMessage]()
     
     init () {
         DispatchQueue.main.async {
             self.isUserCurrentlyLoggedOut = FirebaseManager.shared.auth.currentUser?.uid == nil
         }
         fetchCurrentUser()
+        fetchRecentMessages()
+    }
+    
+    private func fetchRecentMessages () {
+        guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
+//        guard let toId = chatUser?.uid else { return }
+//        guard let chatUser = chatUser else { return }
+        
+        FirebaseManager.shared.firestore
+            .collection("recent_messages")
+            .document(fromId)
+            .collection("messages")
+            .addSnapshotListener { querySnapshot, error in
+                if let error = error {
+                    self.errorMessage = "Failed to listen to recent message, error: \(error.localizedDescription)"
+                    print("Failed to listen to recent message, error: \(error.localizedDescription)")
+                    return
+                }
+                querySnapshot?.documentChanges.forEach({ change in
+                    let docId = change.document.documentID
+                    if let index = self.recentMessages.firstIndex(where: { recentMessage in
+                        return recentMessage.documentId == docId
+                    }) {
+                        self.recentMessages.remove(at: index)
+                    }
+                    
+                    self.recentMessages.insert(.init(documentId: docId, data: change.document.data()), at: 0)
+                })
+            }
     }
     
     func fetchCurrentUser () {
@@ -80,11 +129,11 @@ struct MainMessagesView: View {
                     Divider()
                     
                     ScrollView {
-                        ForEach(0...10, id: \.self) { chat in
+                        ForEach(viewModel.recentMessages) { recentMessage in
                             NavigationLink {
                                 Text("Destination")
                             } label: {
-                                CellChatView(viewModel: viewModel)
+                                CellChatView(email: recentMessage.email, text: recentMessage.text)
                             }
                             
                             Divider()
@@ -148,7 +197,10 @@ struct NewMessageButton: View {
 
 struct CellChatView: View {
     
-    @Bindable var viewModel: MainMessagesViewModel
+    let email: String
+    let text: String
+
+    @Environment(MainMessagesViewModel.self) var viewModel
     
     var body: some View {
         HStack(spacing: 20) {
@@ -160,18 +212,25 @@ struct CellChatView: View {
                 .overlay(Circle().stroke(Color(.label), lineWidth: 1))
             
             VStack(alignment: .leading) {
-                Text("UserName")
+                Text(email)
                     .font(.headline)
+                    .foregroundStyle(Color(.label))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 
-                Text("Message")
+                Text(text)
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.gray)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
             }
             
             Spacer()
             
             Text("Date")
                 .font(.headline)
+                .foregroundStyle(Color(.label))
             
         }
         .padding()

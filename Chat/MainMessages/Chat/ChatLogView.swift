@@ -13,11 +13,15 @@ struct FirebaseConstants {
     static let fromId = "fromId"
     static let toId = "toId"
     static let text = "text"
+    static let profileImageUrl = "profileImageUrl"
+    static let timestamp = "timestamp"
+    static let email = "email"
 }
 
 struct ChatMessage: Identifiable {
     var id: String { documentId }
-    let fromId, toId, text: String
+    let fromId, toId, text, profileImageUrl, email: String
+    let timestamp: Timestamp
     let documentId: String
     
     init(documentId: String, data: [String: Any]) {
@@ -25,6 +29,9 @@ struct ChatMessage: Identifiable {
         self.fromId = data[FirebaseConstants.fromId] as? String ?? ""
         self.toId = data[FirebaseConstants.toId] as? String ?? ""
         self.text = data[FirebaseConstants.text] as? String ?? ""
+        self.profileImageUrl = data[FirebaseConstants.profileImageUrl] as? String ?? ""
+        self.timestamp = data[FirebaseConstants.timestamp] as? Timestamp ?? Timestamp(date: Date())
+        self.email = data[FirebaseConstants.email] as? String ?? ""
     }
 }
 
@@ -50,7 +57,7 @@ struct ChatMessage: Identifiable {
             .collection("messages")
             .document(fromId)
             .collection(toId)
-            .order(by: "timestamp")
+            .order(by: FirebaseConstants.timestamp)
             .addSnapshotListener { querySnapshot, error in
                 if let error = error {
                     self.errorMessage = "Failed to fetch messages: \(error.localizedDescription)"
@@ -75,7 +82,7 @@ struct ChatMessage: Identifiable {
             FirebaseConstants.fromId: fromId,
             FirebaseConstants.toId: toId,
             FirebaseConstants.text: self.chatText,
-            "timestamp": Timestamp()
+            FirebaseConstants.timestamp: Timestamp()
         ] as [String: Any]
         
         // Write the message for the sender, in case it's not empty
@@ -92,6 +99,9 @@ struct ChatMessage: Identifiable {
                     return
                 }
                 //            print("Successfully saved message for sender")
+                
+                self.persistRecentMessage()
+                
                 self.chatText = ""
                 self.count += 1
             }
@@ -111,6 +121,36 @@ struct ChatMessage: Identifiable {
                     return
                 }
                 //                print("Successfully saved message for recipient")
+            }
+        }
+    }
+    
+    //Show recent message on the top of newMessageView screen
+    private func persistRecentMessage() {
+        guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
+        guard let toId = chatUser?.uid else { return }
+        guard let chatUser = chatUser else { return }
+        
+        let recentDocument =  FirebaseManager.shared.firestore
+            .collection("recent_messages")
+            .document(fromId)
+            .collection("messages")
+            .document(toId)
+        
+        let data = [
+            FirebaseConstants.text: self.chatText,
+            FirebaseConstants.fromId: fromId,
+            FirebaseConstants.toId: toId,
+            FirebaseConstants.profileImageUrl: chatUser.profileImageUrl,
+            FirebaseConstants.timestamp: Timestamp(),
+            FirebaseConstants.email: chatUser.email,
+        ] as [String : Any]
+        
+        recentDocument.setData(data) {error in
+            if let error = error {
+                self.errorMessage = "Failed to save recent message, error: \(error.localizedDescription)"
+                print("Failed to save recent message, error: \(error.localizedDescription)")
+                return
             }
         }
     }
