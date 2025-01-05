@@ -133,7 +133,7 @@ struct MainMessagesView: View {
                             NavigationLink {
                                 Text("Destination")
                             } label: {
-                                CellChatView(email: recentMessage.email, text: recentMessage.text)
+                                CellChatView(email: recentMessage.email, profileImageUrl: recentMessage.profileImageUrl, text: recentMessage.text, timestamp: recentMessage.timestamp)
                             }
                             
                             Divider()
@@ -197,19 +197,14 @@ struct NewMessageButton: View {
 
 struct CellChatView: View {
     
-    let email: String
-    let text: String
+    let email, profileImageUrl, text: String
+    let timestamp: Timestamp
 
     @Environment(MainMessagesViewModel.self) var viewModel
     
     var body: some View {
         HStack(spacing: 20) {
-            Image("defaultAvatar")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 80, height: 80)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color(.label), lineWidth: 1))
+            ChatUserImageView(imageUrl: profileImageUrl, size: 70)
             
             VStack(alignment: .leading) {
                 Text(email)
@@ -228,12 +223,31 @@ struct CellChatView: View {
             
             Spacer()
             
-            Text("Date")
+            Text(timeAgo(from: timestamp))
                 .font(.headline)
-                .foregroundStyle(Color(.label))
+                .foregroundStyle(Color(.secondaryLabel))
             
         }
-        .padding()
+        .padding(.vertical, 12)
+    }
+    func timeAgo(from timestamp: Timestamp) -> String {
+        let messageDate = timestamp.dateValue()
+        let currentDate = Date()
+        let timeInterval = currentDate.timeIntervalSince(messageDate)
+
+        if timeInterval < 60 {
+            return "\(Int(timeInterval)) s"
+        } else if timeInterval < 3600 {
+            return "\(Int(timeInterval / 60)) m"
+        } else if timeInterval < 86400 {
+            return "\(Int(timeInterval / 3600)) h"
+        } else if timeInterval < 604800 {
+            return "\(Int(timeInterval / 86400)) d"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            return formatter.string(from: messageDate)
+        }
     }
 }
 
@@ -245,7 +259,7 @@ struct CustomNavBar: View {
     
     var body: some View {
         HStack(spacing: 20) {
-            ChatUserImageView(imageUrl: viewModel.chatUser?.profileImageUrl)
+            ChatUserImageView(imageUrl: viewModel.chatUser?.profileImageUrl, size: 50)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(viewModel.chatUser?.email ?? "")")

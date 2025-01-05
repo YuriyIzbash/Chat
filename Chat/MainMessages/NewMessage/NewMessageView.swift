@@ -53,7 +53,7 @@ struct NewMessageView: View {
                     } label: {
                         HStack(spacing: 20) {
                            
-                            ChatUserImageView(imageUrl: user.profileImageUrl)
+                            ChatUserImageView(imageUrl: user.profileImageUrl, size: 50)
                             Text(user.email)
                                 .foregroundStyle(Color(.label))
                             Spacer()
