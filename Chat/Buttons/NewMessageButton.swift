@@ -11,6 +11,8 @@ struct NewMessageButton: View {
     @State var showNewMessageScreen: Bool = false
     @Binding var shouldNavigateToChatLogView: Bool
     @Binding var selectedChatUser: ChatUser?
+    var chatLogViewModel = ChatLogViewModel(chatUser: nil)
+    
 
     var body: some View {
         Button {
@@ -33,9 +35,10 @@ struct NewMessageButton: View {
         }
         .fullScreenCover(isPresented: $showNewMessageScreen) {
             NewMessageView(didSelectNewUser: { user in
-//                print(user.email)
                 self.selectedChatUser = user
-                self.shouldNavigateToChatLogView = true
+                self.shouldNavigateToChatLogView.toggle()
+                self.chatLogViewModel.chatUser = user
+                self.chatLogViewModel.fetchMessages()
             }, viewModel: NawMessageViewModel())
         }
     }

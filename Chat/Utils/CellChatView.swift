@@ -14,11 +14,19 @@ struct CellChatView: View {
     let username, profileImageUrl, text: String
     let timeAgo: String
 
-    @Environment(MainMessagesViewModel.self) var viewModel
+    @Environment(MainMessagesViewModel.self) private var viewModel
+    
+    private var shouldBustCache: Bool {
+            // Add logic to determine if cache-busting is required
+            // For example, check if profile image updates frequently
+            true // or false depending on your app's requirements
+        }
     
     var body: some View {
         HStack(spacing: 20) {
-            ChatUserImageView(imageUrl: profileImageUrl, size: 70)
+            // Cache-busting applied only if needed
+            let finalImageUrl = profileImageUrl + (shouldBustCache ? "?t=\(Date().timeIntervalSince1970)" : "")
+                        ChatUserImageView(imageUrl: finalImageUrl, size: 70)
             
             VStack(alignment: .leading) {
                 Text(username)
@@ -44,24 +52,5 @@ struct CellChatView: View {
         }
         .padding(.vertical, 12)
     }
-//    func timeAgo(from timestamp: Timestamp) -> String {
-//        let messageDate = timestamp.dateValue()
-//        let currentDate = Date()
-//        let timeInterval = currentDate.timeIntervalSince(messageDate)
-//
-//        if timeInterval < 60 {
-//            return "\(Int(timeInterval)) s"
-//        } else if timeInterval < 3600 {
-//            return "\(Int(timeInterval / 60)) m"
-//        } else if timeInterval < 86400 {
-//            return "\(Int(timeInterval / 3600)) h"
-//        } else if timeInterval < 604800 {
-//            return "\(Int(timeInterval / 86400)) d"
-//        } else {
-//            let formatter = DateFormatter()
-//            formatter.dateStyle = .short
-//            return formatter.string(from: messageDate)
-//        }
-//    }
 }
 

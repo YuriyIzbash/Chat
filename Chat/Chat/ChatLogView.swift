@@ -9,13 +9,6 @@ import SwiftUI
 
 struct ChatLogView: View {
     
-    let chatUser: ChatUser?
-    
-    init(chatUser: ChatUser?) {
-        self.chatUser = chatUser
-        self.viewModel = .init(chatUser: chatUser)
-    }
-    
     @State private var isUserScrolledUp: Bool = false
     @State private var isAtBottom: Bool = true
     @Bindable var viewModel: ChatLogViewModel
@@ -26,8 +19,11 @@ struct ChatLogView: View {
             
             chatBottomBar
         }
-        .navigationTitle(chatUser?.username ?? "")
+        .navigationTitle(viewModel.chatUser?.username ?? "")
         .navigationBarTitleDisplayMode(.inline)
+        .onDisappear {
+            viewModel.firestoreListener?.remove()
+        }
     }
     
     private var messagesView: some View {
@@ -125,11 +121,6 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
     }
 }
 
-#Preview {
-    NavigationView {
-        ChatLogView(chatUser: .init(data: ["uid": "LGbh4z5iMsSwFoG3LjSsxSrDSA62","email": "test7@test.com"]))
-    }
-}
 
 extension View {
     @ViewBuilder public func hidden(_ shouldHide: Bool) -> some View {

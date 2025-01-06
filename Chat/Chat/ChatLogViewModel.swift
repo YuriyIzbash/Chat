@@ -9,13 +9,14 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 
-@Observable public final class ChatLogViewModel {
+@Observable class ChatLogViewModel {
     
     var chatText: String = ""
     var errorMessage: String = ""
     var chatMessages = [ChatMessage]()
     var count = 0
-    let chatUser: ChatUser?
+    var chatUser: ChatUser?
+    var firestoreListener: ListenerRegistration?
     
     init(chatUser: ChatUser?) {
         self.chatUser = chatUser
@@ -23,11 +24,15 @@ import FirebaseFirestore
         fetchMessages()
     }
     
-    private func fetchMessages() {
-        guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
+    func fetchMessages() {
         
+        guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
         guard let toId = chatUser?.uid else { return }
-        FirebaseManager.shared.firestore
+        
+        firestoreListener?.remove()
+        chatMessages.removeAll()
+        
+        firestoreListener = FirebaseManager.shared.firestore
             .collection("messages")
             .document(fromId)
             .collection(toId)
@@ -42,8 +47,9 @@ import FirebaseFirestore
                 querySnapshot?.documentChanges.forEach({ change in
                     if change.type == .added {
                         do {
-                            let chatMessage = try change.document.data(as: ChatMessage.self)
-                            self.chatMessages.append(chatMessage)
+                            if let chatMessage = try? change.document.data(as: ChatMessage.self) {
+                                self.chatMessages.append(chatMessage)
+                            }
                         } catch {
                             print("Error decoding ChatMessage: \(error.localizedDescription)")
                         }
@@ -104,32 +110,76 @@ import FirebaseFirestore
     }
     
     //Show recent message on the top of newMessageView screen
-    private func persistRecentMessage() {
+    func persistRecentMessage() {
         guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
         guard let toId = chatUser?.uid else { return }
         guard let chatUser = chatUser else { return }
-        
-        let recentDocument =  FirebaseManager.shared.firestore
-            .collection("recent_messages")
-            .document(fromId)
-            .collection("messages")
-            .document(toId)
-        
-        let data = [
+
+        // Data for the sender's recent messages
+        let senderData = [
             FirebaseConstants.text: self.chatText,
             FirebaseConstants.fromId: fromId,
             FirebaseConstants.toId: toId,
             FirebaseConstants.profileImageUrl: chatUser.profileImageUrl,
             FirebaseConstants.timestamp: Date(),
-            FirebaseConstants.email: chatUser.email,
-        ] as [String : Any]
-        
-        recentDocument.setData(data) {error in
-            if let error = error {
-                self.errorMessage = "Failed to save recent message, error: \(error.localizedDescription)"
-                print("Failed to save recent message, error: \(error.localizedDescription)")
-                return
+            FirebaseConstants.email: chatUser.email
+        ] as [String: Any]
+
+        // Update the sender's recent messages
+        FirebaseManager.shared.firestore
+            .collection("recent_messages")
+            .document(fromId)
+            .collection("messages")
+            .document(toId)
+            .setData(senderData) { error in
+                if let error = error {
+                    self.errorMessage = "Failed to save recent message for sender: \(error.localizedDescription)"
+                    print("Failed to save recent message for sender: \(error.localizedDescription)")
+                    return
+                }
             }
-        }
+
+        // Fetch the sender's profile image URL from Firestore
+        FirebaseManager.shared.firestore
+            .collection("users")
+            .document(fromId)
+            .getDocument { document, error in
+                if let error = error {
+                    self.errorMessage = "Failed to fetch sender's profile image URL: \(error.localizedDescription)"
+                    print("Failed to fetch sender's profile image URL: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = document?.data(),
+                      let senderProfileImageUrl = data["profileImageUrl"] as? String,
+                      let senderEmail = data["email"] as? String else {
+                    print("Sender's data is incomplete.")
+                    return
+                }
+                
+                // Data for the recipient's recent messages
+                let recipientData = [
+                    FirebaseConstants.text: self.chatText,
+                    FirebaseConstants.fromId: fromId,
+                    FirebaseConstants.toId: toId,
+                    FirebaseConstants.profileImageUrl: senderProfileImageUrl,
+                    FirebaseConstants.timestamp: Date(),
+                    FirebaseConstants.email: senderEmail
+                ] as [String: Any]
+
+                // Update the recipient's recent messages
+                FirebaseManager.shared.firestore
+                    .collection("recent_messages")
+                    .document(toId)
+                    .collection("messages")
+                    .document(fromId)
+                    .setData(recipientData) { error in
+                        if let error = error {
+                            self.errorMessage = "Failed to save recent message for recipient: \(error.localizedDescription)"
+                            print("Failed to save recent message for recipient: \(error.localizedDescription)")
+                            return
+                        }
+                    }
+            }
     }
 }

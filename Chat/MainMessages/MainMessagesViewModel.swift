@@ -9,29 +9,34 @@ import Foundation
 import Observation
 import Firebase
 
-@Observable public final class MainMessagesViewModel {
+@Observable class MainMessagesViewModel {
     var errorMessage = ""
     var chatUser: ChatUser?
     var isUserCurrentlyLoggedOut = false
     var recentMessages = [RecentMessage]()
+    private var firestoreListener: ListenerRegistration?
     
     init () {
         DispatchQueue.main.async {
             self.isUserCurrentlyLoggedOut = FirebaseManager.shared.auth.currentUser?.uid == nil
         }
         fetchCurrentUser()
-        fetchRecentMessages()
+        if !isUserCurrentlyLoggedOut {
+                fetchRecentMessages()
+            }
     }
     
-    private func fetchRecentMessages () {
-        guard let fromId = FirebaseManager.shared.auth.currentUser?.uid else { return }
-//        guard let toId = chatUser?.uid else { return }
-//        guard let chatUser = chatUser else { return }
+    func fetchRecentMessages () {
+        guard let uid = FirebaseManager.shared.auth.currentUser?.uid else { return }
         
-        FirebaseManager.shared.firestore
+        firestoreListener?.remove()
+        self.recentMessages.removeAll()
+        
+        firestoreListener = FirebaseManager.shared.firestore
             .collection("recent_messages")
-            .document(fromId)
+            .document(uid)
             .collection("messages")
+            .order(by: FirebaseConstants.timestamp)
             .addSnapshotListener { querySnapshot, error in
                 if let error = error {
                     self.errorMessage = "Failed to listen to recent message, error: \(error.localizedDescription)"
